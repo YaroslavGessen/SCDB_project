@@ -1,24 +1,8 @@
+import pybel
 from django import forms
-from .models import Article, Performance
-from .helper import get_doi_metadata
 
-
-class ArticleModelForm(forms.ModelForm):
-    class Meta:
-        model = Article
-        fields = [
-            'author',
-            'title',
-            'journal',
-            'volume',
-            'doi',
-            'pages',
-            'issue_nr',
-            'eid',
-            'year',
-            'electronic_id',
-            'keywords',
-        ]
+from .helpers import get_doi_metadata
+from .models import Molecule, Spectrum, Performance, Spreadsheet, Contribution, Article
 
 
 class ArticleForm(forms.Form):
@@ -53,6 +37,52 @@ class ArticleForm(forms.Form):
                                'DOI provided has incomplete ({}) data. Please contact us regarding this.'.format(
                                    erred_fields))
                 return False
+                # except TypeError:
+                #    self.add_error('doi', 'DOI not found')
+
+    def get_model(self):
+        return self.model_instance, self.created
+
+
+class ArticleModelForm(forms.ModelForm):
+    class Meta:
+        model = Article
+        fields = [
+            'author',
+            'title',
+            'journal',
+            'volume',
+            'doi',
+            'pages',
+            'issue_nr',
+            'eid',
+            'year',
+            'electronic_id',
+            'keywords',
+        ]
+
+
+class MoleculeForm(forms.ModelForm):
+    class Meta:
+        model = Molecule
+        fields = [
+            'smiles',
+            'inchi',
+            'keywords'
+        ]
+
+    def validate_unique(self):
+        pass
+
+
+class SpectrumForm(forms.ModelForm):
+    class Meta:
+        model = Spectrum
+        fields = [
+            'absorption_maxima',
+            'emission_maxima',
+            'solvent',
+        ]
 
 
 class PerformanceForm(forms.ModelForm):
@@ -97,3 +127,67 @@ class PerformanceForm(forms.ModelForm):
 
     def clean(self):
         super().clean()
+
+
+class SpreadsheetForm(forms.ModelForm):
+    class Meta:
+        model = Spreadsheet
+        fields = [
+            'file'
+        ]
+
+
+class ApprovalForm(forms.ModelForm):
+    confirm = forms.BooleanField(required=True, label="I've thoroughly checked the data", )
+
+    class Meta:
+        model = Contribution
+        fields = [
+            'status'
+        ]
+
+
+class PerformanceRangeSearchForm(forms.Form):
+    min_voc = forms.DecimalField(label='min VOC', decimal_places=4, max_digits=15, required=False)
+    max_voc = forms.DecimalField(label='max VOC', decimal_places=4, max_digits=15, required=False)
+    min_jsc = forms.DecimalField(label='min JSC', decimal_places=5, max_digits=15, required=False)
+    max_jsc = forms.DecimalField(label='max JSC', decimal_places=5, max_digits=15, required=False)
+    min_ff = forms.DecimalField(label='min FF', decimal_places=5, max_digits=13, required=False)
+    max_ff = forms.DecimalField(label='max FF', decimal_places=5, max_digits=13, required=False)
+    min_pce = forms.DecimalField(label='min PCE', decimal_places=5, max_digits=13, required=False)
+    max_pce = forms.DecimalField(label='max PCE', decimal_places=5, max_digits=13, required=False)
+
+
+class PerformanceKeywordSearchForm(forms.Form):
+    keyword = forms.CharField(max_length=1000,
+                              required=False,
+                              widget=forms.TextInput(attrs={'placeholder': 'Free text search'}))
+
+
+class PerformanceStructureSearchForm(forms.Form):
+    SUBSTRUCTURE = 'SUB'
+    FINGERPRINT = 'FP'
+    SEARCH_TYPES = (
+        (SUBSTRUCTURE, 'Substructure'),
+        (FINGERPRINT, 'Similarity')
+    )
+
+    smiles = forms.CharField(max_length=1000, required=False)
+    complete_molecule = forms.BooleanField(required=False)
+    search_type = forms.ChoiceField(choices=SEARCH_TYPES, label='Structure search type', widget=forms.RadioSelect)
+    tanimoto_threshold = forms.DecimalField(decimal_places=2, max_digits=3, initial=0.85, required=True)
+
+    def is_valid(self):
+        super().is_valid()
+        # The form can be empty, return true if so
+        if not self.cleaned_data.get('smiles'):
+            return True
+
+        try:
+            # The SMILES was not empty, must be validated
+            molecule = pybel.Smarts(self.cleaned_data.get('smiles'))
+            if molecule:
+                return True
+        except OSError:
+            self.add_error(None, 'Invalid structure.')
+            return False

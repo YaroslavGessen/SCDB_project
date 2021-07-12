@@ -1,0 +1,15 @@
+Django
+requests
+sorl-thumbnail
+bibtexparser
+pillow
+django-extended-choices
+django-bootstrap4
+django-post-office
+xlrd
+django-recaptcha
+django-tinyuuidfield
+coverage
+codecov
+habanero
+django-crispy-forms

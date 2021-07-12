@@ -1,0 +1,76 @@
+{% extends 'app/base.html' %}
+{% load static %}
+{% load bootstrap4 %}
+{% block content %}
+  {% if errors %}
+    <div class="container">
+      <div class="row">
+        <div class="col-md-12">
+          <div class="panel panel-default">
+            <div class="panel-heading">
+              <h3 class="panel-title">Errors</h3>
+            </div>
+            <div class="panel-body panel-content">
+              <table class="table table-bordered table-hover">
+                <thead>
+                <tr>
+                  <th>Row</th>
+                  <th>Field</th>
+                  <th>Message</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for error in errors %}
+                    <tr>
+                      <td><strong>{{ error.row }}</strong></td>
+                      <td>{{ error.key }}</td>
+                      <td>{{ error.message|striptags }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  {% endif %}
+ <style>
+        button {margin-top: 10px;}
+  </style>
+  <div class="container">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="panel panel-default full-page-panel">
+          <div class="panel-heading">
+            <h3 class="panel-title">Batch upload spreadsheet data </h3>
+          </div>
+          <div class="panel-body panel-content">
+          <p>Use this form of upload if you prefer to work in a batches. Note that the spreadsheet is validated
+          thoroughly, and a <a href="{% static "dye/example.xls" %}">template file</a> must be used.</p>
+            <form action="{% url 'file-upload-page' %}" method="post" class="form file-upload-form"
+                  enctype="multipart/form-data">
+              {% csrf_token %}
+              {% bootstrap_form file_form %}
+              {% buttons %}
+                <button type="submit" class="btn btn-primary submit-button">Upload</button>
+                <div class="loader">
+                  <svg class="circular" viewBox="25 25 50 50">
+                    <circle class="path" cx="50" cy="50" r="20" fill="none" stroke-width="4" stroke-miterlimit="10"/>
+                  </svg>
+                </div>
+                <div class="loader-text">
+                  <p>The upload may take a while</p>
+                </div>
+              {% endbuttons %}
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}
+{% block footer-scripts %}
+  <script type="text/javascript" src="{% static 'dye/javascript/dye.js' %}"></script>
+{% endblock footer-scripts %}
