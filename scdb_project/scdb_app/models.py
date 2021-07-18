@@ -174,7 +174,7 @@ class Performance(Data):
         return str(self.molecule)
 
     def get_absolute_url(self):
-        return reverse("dye:performance-detail", kwargs={'short_id': self.short_id})
+        return reverse("performance-detail", kwargs={'short_id': self.short_id})
 
     class Meta:
         verbose_name = "DSSC performance"
@@ -187,7 +187,6 @@ class ContributionManager(models.Manager):
         Creates atomic uploads that can point to any Model: Article, spectra, molecule etc.
         A contribution is then assigned to all these atomic uploads
         """
-
         new_contribution = self.create(*args, **kwargs)
         unraveled_data_entries = list(chain.from_iterable(upload))
         content = [(e, ContentType.objects.get_for_model(e), created) for e, created in unraveled_data_entries]

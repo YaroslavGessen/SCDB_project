@@ -1,9 +1,8 @@
 import re
-import bibtexparser
-import requests
+
+import pybel
 from django.utils.timezone import datetime
 from habanero import Crossref
-import pybel
 
 
 def get_doi_metadata(doi):
@@ -15,8 +14,6 @@ def get_doi_metadata(doi):
                       ' ' + crossref_object['message']['author'][i]['family'])
 
     try:
-        # article = bibtex_object.entries[0]
-
         author = ','.join(author)
         title = ' '.join(crossref_object['message']['title'])
         journal = ' '.join(crossref_object['message']['container-title'])
@@ -43,7 +40,6 @@ def get_doi_metadata(doi):
 
 
 def to_decimal(string):
-    # Shapes "string" into a number with a best-effort attempt
     if not isinstance(string, float):
         illegal_characters = re.search('([^0-9^.^,^-])', string)
         if illegal_characters:
@@ -63,9 +59,6 @@ def to_decimal(string):
 
 
 def locate_start_data(sheet):
-    """
-    Locate control tag start row
-    """
     start_data = None
     for row_index in range(sheet.nrows):
         if "**%BEGIN%**" in sheet.row_values(row_index, 0, 1):

@@ -13,6 +13,8 @@ from django.db.models import Q
 from django.forms import modelformset_factory
 from django.http import StreamingHttpResponse
 from django.shortcuts import reverse, render, redirect, Http404
+import plotly.express as px
+from sklearn.decomposition import PCA
 
 from .forms import *
 from .helpers import locate_start_data, to_decimal
@@ -25,16 +27,12 @@ def validate_raw_data(article_form, molecule_form, spectrum_form, performance_fo
             raise FieldError
         else:
             article, created_article = article_form.get_model()
-
-            # article exists or was created
             created_molecule, created_spectrum, created_performance = False, False, False
             try:
-                # We try to fetch the molecule
                 molecule_form.is_valid()
                 molecule = Molecule.objects.get(Q(inchi=molecule_form.data.get('inchi')) |
                                                 Q(smiles=molecule_form.data.get('smiles')))
             except ObjectDoesNotExist:
-                # Molecule was not found, and therefore is_valid should now pass unless the user has erred
                 if not molecule_form.is_valid():
                     raise FieldError
                 molecule_form.article = article
@@ -42,11 +40,8 @@ def validate_raw_data(article_form, molecule_form, spectrum_form, performance_fo
                 created_molecule = True
 
             try:
-                # TODO: Remove one to one constraint on spectrum.
-                # Try to get spectrum
                 spectrum = Spectrum.objects.get(molecule=molecule)
             except ObjectDoesNotExist:
-                # Does not exist
                 if not spectrum_form.is_valid():
                     raise FieldError
                 spectrum = spectrum_form.save(commit=False)
@@ -251,12 +246,6 @@ def contribution_performances(request, short_id):
                   context={'approval_form': approval_form, 'performances': performances})
 
 
-@login_required
-def my_contributions(request):
-    contributions = Contribution.objects.filter(user=request.user).order_by('-created')
-    return render(request, 'my_contributions.html', context={'contributions': contributions})
-
-
 def performance_list(request):
     context = paginate_performances(request, get_performances(), {})
     return render(request, 'performance_list.html', context)
@@ -307,13 +296,6 @@ def performance_search(request):
 
 
 def get_performances(**search):
-    if search.get('status'):
-        # performances = Performance.objects.filter(status=search.get('status'))
-        pass
-    else:
-        pass
-        # performances = Performance.objects.filter(status=APPROVAL_STATES.APPROVED)
-
     performances = Performance.objects.filter(status=APPROVAL_STATES.APPROVED)
 
     # Search after keyword
@@ -359,9 +341,6 @@ def get_performances(**search):
 
 
 def paginate_performances(request, performance_list, context):
-    """
-    For a given set of performances returns the context with pagination
-    """
     paginator = Paginator(performance_list, settings.PAGINATION_NUMBER)
 
     page = request.GET.get('page')
@@ -393,22 +372,11 @@ def paginate_performances(request, performance_list, context):
 
 
 class Echo:
-    # https://docs.djangoproject.com/en/2.0/howto/outputting-csv/#streaming-large-csv-files
-    """An object that implements just the write method of the file-like
-    interface.
-    """
-
     def write(self, value):
-        """Write the value by returning it, instead of storing in a buffer."""
         return value
 
 
 def download_all_performances_csv(request):
-    """A view that streams a large CSV file."""
-    # Generate a sequence of rows. The range is based on the maximum number of
-    # rows that can be handled by a single sheet in most spreadsheet
-    # applications.
-
     all_performances = list(Performance.objects.all().select_related('molecule', 'article', 'molecule__spectrum'))
 
     rows = ([instance.voc, instance.jsc, instance.ff, instance.pce, instance.electrolyte,
@@ -441,11 +409,20 @@ def download_all_performances_csv(request):
                  "Molecule spectrum absorption maxima", "Molecule spectrum emission maxima",
                  "Molecule spectrum solvent"]
 
-    # Add the first row to the generator ("rows") with the help of itertools
     response = StreamingHttpResponse((writer.writerow(row) for row in itertools.chain([first_row], rows)),
                                      content_type="text/csv")
     response['Content-Disposition'] = 'attachment; filename="datadump.csv"'
     return response
+
+
+@login_required
+def my_contributions(request):
+    contributions = Contribution.objects.filter(user=request.user).order_by('-created')
+    return render(request, 'app/doi/my_contributions.html', context={'contributions': contributions})
+
+
+def get_pca(request):
+    pass
 
 
 def batch_download_info(request):
